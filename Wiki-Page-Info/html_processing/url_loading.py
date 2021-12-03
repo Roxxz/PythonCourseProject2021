@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from urllib.error import HTTPError
 from collections import Counter
 import json
+import string
 
 
 def data_to_json(data_dict: dict):
@@ -11,6 +12,7 @@ def data_to_json(data_dict: dict):
         "Wiki-Page-Info/html_processing/json_loader/Wiki-Page-Info.json", "w"
     ) as json_file:
         json.dump(data_dict, json_file)
+    print("JSON File created in ~Wiki-Page-Info/html_processing/json_loader~")
 
 
 def save_images(images):
@@ -28,24 +30,38 @@ def save_images(images):
             print(err)  # something wrong with url
 
 
-def get_most_frequent_word(html_text: str):
-    # split() returns list of all the words in the string
-    split_it = html_text.split()
+def remove_symbols(text: str):
+    # iteration through text words
+    for char in string.punctuation:
+        text = s.replace(char, " ")
+    return text
 
-    # Pass the split_it list to instance of Counter class.
-    counter = Counter(split_it)
 
-    # most_common() produces k frequently encountered
-    # input values and their respective counts.
-    most_occur = counter.most_common(1)
+def get_most_frequent_word(text: str):
+    most_occur = Counter(text).most_common(1)[0]
+    return most_occur[0]
 
-    return most_occur[0][0]
+
+def get_least_frequent_word(text: str):
+    least_occur = Counter(text).most_common()[-1]
+    return least_occur[0]
+
+
+def get_longest_word(text: str):
+    return max(text, key=len)
+
+
+def get_shortest_word(text: str):
+    return min(text, key=len)
 
 
 def get_data_from_html(html_text: str):
     data_dict = {
         "Title": "",
-        "Most_frequent_word": "",
+        "Most frequent word": "",
+        "Least frequent word": "",
+        "Longest word": "",
+        "Shortest word": "",
         "Images": [],
     }
 
@@ -54,13 +70,15 @@ def get_data_from_html(html_text: str):
     end_index = html_text.find("</title>")
     title = html_text[start_index:end_index]
 
-    data_dict["Title"] = title
-    # print(title)
-
     soup = BeautifulSoup(html_text, "html.parser")
-    # print(soup.get_text())
+    # print(soup.get_text().split())
+    text = remove_symbols(soup.get_text().split())
 
-    data_dict["Most_frequent_word"] = get_most_frequent_word(soup.get_text())
+    data_dict["Title"] = title
+    data_dict["Most frequent word"] = get_most_frequent_word(text)
+    data_dict["Least frequent word"] = get_least_frequent_word(text)
+    data_dict["Longest word"] = get_longest_word(text)
+    data_dict["Shortest word"] = get_shortest_word(text)
 
     images = soup.find_all("img")
     images_list = []
@@ -69,17 +87,15 @@ def get_data_from_html(html_text: str):
     data_dict["Images"] = images_list
     # save_images(images)
 
-    # print(data_dict)
     data_to_json(data_dict)
+    # print(data_dict)
 
 
-def load():
+def load(url: str):
     try:
-        url = "https://ro.wikipedia.org/wiki/Regnul_Fungi"
         page = urlopen(url)
         html_bytes = page.read()
         html = html_bytes.decode("utf-8")
-        # print(html)
         get_data_from_html(html)
     except urllib.error.URLError as e:
         print(e.reason)
