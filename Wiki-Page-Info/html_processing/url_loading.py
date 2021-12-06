@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 from urllib.error import HTTPError
 from collections import Counter
 import json
-import string
 
 
 def data_to_json(data_dict: dict):
@@ -28,55 +27,164 @@ def save_images(images):
             print(err)  # something wrong with local path
         except HTTPError as err:
             print(err)  # something wrong with url
+        finally:
+            continue
 
 
-def remove_symbols(text: str):
-    # iteration through text words
-    for char in string.punctuation:
-        text = s.replace(char, " ")
+def remove_symbols(text: list):
+    symbols = [
+        "`",
+        ".",
+        "~",
+        "!",
+        "@",
+        "#",
+        "$",
+        "%",
+        "^",
+        "&",
+        "*",
+        "(",
+        ")",
+        "_",
+        "+",
+        "-",
+        "=",
+        "[",
+        "]",
+        "{",
+        "}",
+        "|",
+        ";",
+        "'",
+        ":",
+        "/",
+        "<",
+        ">",
+        "?",
+        ",",
+    ]
+    for symbol in symbols:
+        while symbol in text:
+            text.remove(symbol)
     return text
 
 
-def get_most_frequent_word(text: str):
+def format_text(text: list, option: bool = 0):
+    if option:
+        prepositions = [
+            "with",
+            "at",
+            "by",
+            "to",
+            "in",
+            "for",
+            "from",
+            "of",
+            "on",
+            "at",
+            "but",
+            "by",
+            "this",
+            "that",
+            "the",
+            "and",
+            "a",
+            "an",
+            "With",
+            "At",
+            "By",
+            "To",
+            "In",
+            "For",
+            "From",
+            "Of",
+            "On",
+            "At",
+            "But",
+            "By",
+            "This",
+            "That",
+            "The",
+            "And",
+            "A",
+            "An",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "0",
+        ]
+        for preposition in prepositions:
+            while preposition in text:
+                text.remove(preposition)
+        return text
+    else:
+        return text
+
+
+def get_most_frequent_word(text: list):
     most_occur = Counter(text).most_common(1)[0]
-    return most_occur[0]
+    return most_occur
 
 
-def get_least_frequent_word(text: str):
+def get_least_frequent_word(text: list):
     least_occur = Counter(text).most_common()[-1]
-    return least_occur[0]
+    return least_occur
 
 
-def get_longest_word(text: str):
-    return max(text, key=len)
+def get_longest_word(text: list):
+    word = max(text, key=len)
+    while not word.isalpha():
+        text.remove(word)
+        word = max(text, key=len)
+    return word
 
 
-def get_shortest_word(text: str):
-    return min(text, key=len)
+def get_shortest_word(text: list):
+    word = min(text, key=len)
+    while len(word) < 4:
+        text.remove(word)
+        word = min(text, key=len)
+    return word
 
 
-def get_data_from_html(html_text: str):
+def process_data(html_text: str):
     data_dict = {
         "Title": "",
         "Most frequent word": "",
+        "MFW No. of Appearances": "",
         "Least frequent word": "",
+        "LFW No. of Appearances": "",
         "Longest word": "",
         "Shortest word": "",
         "Images": [],
     }
 
-    title_index = html_text.find("<title>")
-    start_index = title_index + len("<title>")
-    end_index = html_text.find("</title>")
-    title = html_text[start_index:end_index]
-
     soup = BeautifulSoup(html_text, "html.parser")
-    # print(soup.get_text().split())
-    text = remove_symbols(soup.get_text().split())
 
+    text = remove_symbols(
+        soup.find("div", attrs={"class": "mw-parser-output"}).get_text().split()
+    )
+
+    option = input(
+        "Choose text format option: \n 0: simple format; \n 1: without prepositions and numbers; \n"
+    )
+    text = format_text(text, option)
+
+    title = soup.title.text
     data_dict["Title"] = title
-    data_dict["Most frequent word"] = get_most_frequent_word(text)
-    data_dict["Least frequent word"] = get_least_frequent_word(text)
+    (word, no) = get_most_frequent_word(text)
+    data_dict["Most frequent word"] = word
+    data_dict["MFW No. of Appearances"] = no
+    (word, no) = get_least_frequent_word(text)
+    data_dict["Least frequent word"] = word
+    data_dict["LFW No. of Appearances"] = no
     data_dict["Longest word"] = get_longest_word(text)
     data_dict["Shortest word"] = get_shortest_word(text)
 
@@ -85,10 +193,14 @@ def get_data_from_html(html_text: str):
     for img in images:
         images_list.append(img["src"])
     data_dict["Images"] = images_list
-    # save_images(images)
+    save_images(images)
 
+    option = input(
+        "Choose method of visualising data: \n 0: Only JSON; \n 1: Terminal and JSON; \n"
+    )
+    if option == "1":
+        print(json.dumps(data_dict, indent=4), "\n")
     data_to_json(data_dict)
-    # print(data_dict)
 
 
 def load(url: str):
@@ -96,6 +208,6 @@ def load(url: str):
         page = urlopen(url)
         html_bytes = page.read()
         html = html_bytes.decode("utf-8")
-        get_data_from_html(html)
+        process_data(html)
     except urllib.error.URLError as e:
         print(e.reason)
