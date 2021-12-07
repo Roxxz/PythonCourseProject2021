@@ -15,6 +15,8 @@ OUTPUT:
 
 Un obiect in format JSON de ex:
 {“title” : <title>,
+  
 “Most_frequent_word”: <word><
+  
 “Images”: <list_src_img>”
 }
